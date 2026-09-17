@@ -287,15 +287,11 @@ def list_records(limit: int = 50):
 
     client = get_indexer_client()
 
-    # We intentionally do not use note_prefix here.
-    #
     # The registry note is JSON and starts with "{",
-    # while "LFR1" appears inside the JSON as the
-    # value of the "app" field.
-    #
-    # Therefore, we retrieve payment transactions
-    # for this account and filter valid registry
-    # records after decoding their notes.
+    # while "LFR1" appears inside the JSON.
+    # Therefore, retrieve payment transactions for
+    # this account and filter valid registry records
+    # after decoding their notes.
     response = client.search_transactions_by_address(
         address=sender,
         limit=limit,
@@ -337,6 +333,210 @@ def list_records(limit: int = 50):
         )
 
     return records
+
+
+def print_records(records):
+    """Display registry records in a readable format."""
+
+    if not records:
+        print(
+            "\nNo Lost & Found records found."
+        )
+        return
+
+    print(
+        f"\nFound {len(records)} "
+        f"Lost & Found record(s):"
+    )
+
+    print(
+        "\n" + "=" * 60
+    )
+
+    for number, entry in enumerate(
+        records,
+        start=1,
+    ):
+        record = entry["record"]
+
+        print(
+            f"Record #{number}"
+        )
+
+        print(
+            f"Type:        {record.get('type', 'N/A')}"
+        )
+
+        print(
+            f"Item:        {record.get('item', 'N/A')}"
+        )
+
+        print(
+            f"Description: {record.get('description', 'N/A')}"
+        )
+
+        print(
+            f"Location:    {record.get('location', 'N/A')}"
+        )
+
+        print(
+            f"Reported:    {record.get('reported_at', 'N/A')}"
+        )
+
+        print(
+            f"Round:       {entry.get('confirmed_round', 'N/A')}"
+        )
+
+        print(
+            f"TXID:        {entry.get('txid', 'N/A')}"
+        )
+
+        print(
+            "=" * 60
+        )
+
+
+def register_from_menu(item_type: str):
+    """Collect registration details interactively."""
+
+    print(
+        f"\n--- Register {item_type.capitalize()} Item ---"
+    )
+
+    item = input(
+        "Item name: "
+    ).strip()
+
+    description = input(
+        "Description: "
+    ).strip()
+
+    location = input(
+        "Location: "
+    ).strip()
+
+    try:
+        txid = register_item(
+            item_type,
+            item,
+            description,
+            location,
+        )
+
+        print(
+            "\nRegistration successful!"
+        )
+
+        print(
+            f"Transaction ID: {txid}"
+        )
+
+    except ValueError as exc:
+        print(
+            f"\nValidation error: {exc}"
+        )
+
+    except RuntimeError as exc:
+        print(
+            f"\nConfiguration error: {exc}"
+        )
+
+
+def run_menu():
+    """Run the interactive Lost & Found registry menu."""
+
+    while True:
+        print(
+            "\n"
+            "========================================\n"
+            "     ALGORAND LOST & FOUND REGISTRY\n"
+            "========================================\n"
+        )
+
+        print(
+            "1. Register Lost Item"
+        )
+
+        print(
+            "2. Register Found Item"
+        )
+
+        print(
+            "3. View All Records"
+        )
+
+        print(
+            "4. Verify Transaction"
+        )
+
+        print(
+            "5. Exit"
+        )
+
+        print()
+
+        choice = input(
+            "Enter your choice: "
+        ).strip()
+
+        if choice == "1":
+            register_from_menu(
+                "lost"
+            )
+
+        elif choice == "2":
+            register_from_menu(
+                "found"
+            )
+
+        elif choice == "3":
+            try:
+                records = list_records()
+                print_records(records)
+
+            except RuntimeError as exc:
+                print(
+                    f"\nConfiguration error: {exc}"
+                )
+
+            except Exception as exc:
+                print(
+                    f"\nCould not retrieve records: {exc}"
+                )
+
+        elif choice == "4":
+            txid = input(
+                "\nEnter Transaction ID: "
+            ).strip()
+
+            result = verify_transaction(
+                txid
+            )
+
+            print(
+                "\nVerification Result:"
+            )
+
+            print(
+                json.dumps(
+                    result,
+                    indent=2,
+                )
+            )
+
+        elif choice == "5":
+            print(
+                "\nThank you for using "
+                "Algorand Lost & Found Registry."
+            )
+
+            break
+
+        else:
+            print(
+                "\nInvalid choice. "
+                "Please select 1, 2, 3, 4, or 5."
+            )
 
 
 def main():
@@ -397,6 +597,11 @@ def main():
         help="Maximum number of records to display",
     )
 
+    sub.add_parser(
+        "menu",
+        help="Launch the interactive registry menu",
+    )
+
     args = parser.parse_args()
 
     try:
@@ -430,23 +635,12 @@ def main():
                 args.limit
             )
 
-            if not records:
-                print(
-                    "No Lost & Found records found."
-                )
-                return
-
-            print(
-                f"Found {len(records)} "
-                f"Lost & Found record(s):\n"
+            print_records(
+                records
             )
 
-            print(
-                json.dumps(
-                    records,
-                    indent=2,
-                )
-            )
+        elif args.command == "menu":
+            run_menu()
 
     except ValueError as exc:
         parser.error(
