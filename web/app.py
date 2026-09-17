@@ -1,3 +1,6 @@
+import os
+
+from dotenv import load_dotenv
 from flask import (
     Flask,
     flash,
@@ -16,11 +19,25 @@ from src.registry import (
 )
 
 
+load_dotenv()
+
+
 app = Flask(__name__)
 
-# Development-only secret key.
-# Replace with a secure random value before production deployment.
-app.secret_key = "algorand-lost-found-development-key"
+# Flask session/flash-message secret.
+# Keep the real value in .env and never commit .env.
+app.secret_key = os.getenv(
+    "FLASK_SECRET_KEY",
+    "development-only-change-this-secret",
+)
+
+DEBUG_MODE = (
+    os.getenv(
+        "FLASK_DEBUG",
+        "false",
+    ).strip().lower()
+    == "true"
+)
 
 
 def calculate_statistics(records):
@@ -31,13 +48,19 @@ def calculate_statistics(records):
     lost_count = sum(
         1
         for entry in records
-        if entry.get("record", {}).get("type") == "lost"
+        if entry.get(
+            "record",
+            {},
+        ).get("type") == "lost"
     )
 
     found_count = sum(
         1
         for entry in records
-        if entry.get("record", {}).get("type") == "found"
+        if entry.get(
+            "record",
+            {},
+        ).get("type") == "found"
     )
 
     return {
@@ -67,9 +90,15 @@ def render_dashboard(
         records=records,
         search_query=search_query,
         search_type=search_type,
-        total_records=statistics["total_records"],
-        lost_count=statistics["lost_count"],
-        found_count=statistics["found_count"],
+        total_records=statistics[
+            "total_records"
+        ],
+        lost_count=statistics[
+            "lost_count"
+        ],
+        found_count=statistics[
+            "found_count"
+        ],
     )
 
 
@@ -96,7 +125,10 @@ def index():
         )
 
 
-@app.route("/register", methods=["POST"])
+@app.route(
+    "/register",
+    methods=["POST"],
+)
 def register():
     """Register a new lost/found item."""
 
@@ -177,15 +209,19 @@ def search():
             filtered_records = all_records
 
         elif search_type == "location":
-            filtered_records = search_records_by_location(
-                all_records,
-                query,
+            filtered_records = (
+                search_records_by_location(
+                    all_records,
+                    query,
+                )
             )
 
         else:
-            filtered_records = search_records_by_item(
-                all_records,
-                query,
+            filtered_records = (
+                search_records_by_item(
+                    all_records,
+                    query,
+                )
             )
 
         return render_dashboard(
@@ -209,7 +245,10 @@ def search():
         )
 
 
-@app.route("/verify", methods=["GET", "POST"])
+@app.route(
+    "/verify",
+    methods=["GET", "POST"],
+)
 def verify():
     """Verify a Lost & Found transaction on Algorand."""
 
@@ -242,7 +281,9 @@ def health():
 
     return {
         "status": "ok",
-        "application": "Algorand Lost & Found Registry",
+        "application": (
+            "Algorand Lost & Found Registry"
+        ),
     }
 
 
@@ -250,5 +291,5 @@ if __name__ == "__main__":
     app.run(
         host="127.0.0.1",
         port=5000,
-        debug=True,
+        debug=DEBUG_MODE,
     )
