@@ -23,26 +23,77 @@ app = Flask(__name__)
 app.secret_key = "algorand-lost-found-development-key"
 
 
+def calculate_statistics(records):
+    """Calculate dashboard statistics from registry records."""
+
+    total_records = len(records)
+
+    lost_count = sum(
+        1
+        for entry in records
+        if entry.get("record", {}).get("type") == "lost"
+    )
+
+    found_count = sum(
+        1
+        for entry in records
+        if entry.get("record", {}).get("type") == "found"
+    )
+
+    return {
+        "total_records": total_records,
+        "lost_count": lost_count,
+        "found_count": found_count,
+    }
+
+
+def render_dashboard(
+    records,
+    search_query="",
+    search_type="item",
+    all_records=None,
+):
+    """Render the dashboard with records and statistics."""
+
+    if all_records is None:
+        all_records = records
+
+    statistics = calculate_statistics(
+        all_records
+    )
+
+    return render_template(
+        "index.html",
+        records=records,
+        search_query=search_query,
+        search_type=search_type,
+        total_records=statistics["total_records"],
+        lost_count=statistics["lost_count"],
+        found_count=statistics["found_count"],
+    )
+
+
 @app.route("/")
 def index():
     """Display the Lost & Found dashboard."""
 
     try:
         records = list_records()
-    except Exception as exc:
-        records = []
 
+        return render_dashboard(
+            records
+        )
+
+    except Exception as exc:
         flash(
             f"Could not retrieve blockchain records: {exc}",
             "error",
         )
 
-    return render_template(
-        "index.html",
-        records=records,
-        search_query="",
-        search_type="item",
-    )
+        return render_dashboard(
+            [],
+            all_records=[],
+        )
 
 
 @app.route("/register", methods=["POST"])
@@ -120,28 +171,28 @@ def search():
     ).strip()
 
     try:
-        records = list_records()
+        all_records = list_records()
 
         if not query:
-            filtered_records = records
+            filtered_records = all_records
 
         elif search_type == "location":
             filtered_records = search_records_by_location(
-                records,
+                all_records,
                 query,
             )
 
         else:
             filtered_records = search_records_by_item(
-                records,
+                all_records,
                 query,
             )
 
-        return render_template(
-            "index.html",
-            records=filtered_records,
+        return render_dashboard(
+            filtered_records,
             search_query=query,
             search_type=search_type,
+            all_records=all_records,
         )
 
     except Exception as exc:
@@ -150,11 +201,11 @@ def search():
             "error",
         )
 
-        return render_template(
-            "index.html",
-            records=[],
+        return render_dashboard(
+            [],
             search_query=query,
             search_type=search_type,
+            all_records=[],
         )
 
 
@@ -167,6 +218,7 @@ def verify():
             "txid",
             "",
         ).strip()
+
     else:
         txid = request.args.get(
             "txid",

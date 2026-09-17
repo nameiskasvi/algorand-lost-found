@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
 
     <meta charset="UTF-8">
@@ -26,15 +27,28 @@
 
 <header class="header">
 
-    <div class="container">
+    <div class="container header-content">
 
-        <h1>
-            Algorand Lost &amp; Found Registry
-        </h1>
+        <div>
 
-        <p>
-            Blockchain-backed Lost &amp; Found record management
-        </p>
+            <div class="brand">
+                ALGORAND
+            </div>
+
+            <h1>
+                Lost &amp; Found Registry
+            </h1>
+
+            <p>
+                Blockchain-backed Lost &amp; Found record management
+            </p>
+
+        </div>
+
+        <div class="network-badge">
+            <span class="status-dot"></span>
+            Algorand TestNet
+        </div>
 
     </div>
 
@@ -65,18 +79,95 @@
     {% endwith %}
 
 
+    <!-- Dashboard statistics -->
+
+    <section class="stats-grid">
+
+
+        <div class="stat-card">
+
+            <div class="stat-label">
+                TOTAL RECORDS
+            </div>
+
+            <div class="stat-value">
+                {{ total_records }}
+            </div>
+
+            <div class="stat-description">
+                Blockchain registry records
+            </div>
+
+        </div>
+
+
+        <div class="stat-card lost-stat">
+
+            <div class="stat-label">
+                LOST ITEMS
+            </div>
+
+            <div class="stat-value">
+                {{ lost_count }}
+            </div>
+
+            <div class="stat-description">
+                Items reported as lost
+            </div>
+
+        </div>
+
+
+        <div class="stat-card found-stat">
+
+            <div class="stat-label">
+                FOUND ITEMS
+            </div>
+
+            <div class="stat-value">
+                {{ found_count }}
+            </div>
+
+            <div class="stat-description">
+                Items reported as found
+            </div>
+
+        </div>
+
+
+    </section>
+
+
     <!-- Registration -->
 
     <section class="card">
 
-        <h2>
-            Register an Item
-        </h2>
+        <div class="card-title">
+
+            <div>
+
+                <span class="section-kicker">
+                    NEW RECORD
+                </span>
+
+                <h2>
+                    Register an Item
+                </h2>
+
+                <p>
+                    Create a verifiable Lost &amp; Found record
+                    on Algorand TestNet.
+                </p>
+
+            </div>
+
+        </div>
 
 
         <form
             action="{{ url_for('register') }}"
             method="POST"
+            class="registration-form"
         >
 
 
@@ -123,7 +214,7 @@
             </div>
 
 
-            <div class="form-group">
+            <div class="form-group full-width">
 
                 <label for="description">
                     Description
@@ -133,7 +224,7 @@
                     id="description"
                     name="description"
                     maxlength="500"
-                    placeholder="Describe the item"
+                    placeholder="Describe the item, color, identifying features, etc."
                     required
                 ></textarea>
 
@@ -158,12 +249,20 @@
             </div>
 
 
-            <button
-                type="submit"
-                class="button"
-            >
-                Register Item
-            </button>
+            <div class="form-submit">
+
+                <button
+                    type="submit"
+                    class="button primary-button"
+                >
+                    Register on Algorand
+                </button>
+
+                <span class="form-note">
+                    A blockchain transaction will be created.
+                </span>
+
+            </div>
 
 
         </form>
@@ -175,9 +274,25 @@
 
     <section class="card">
 
-        <h2>
-            Search Records
-        </h2>
+        <div class="card-title">
+
+            <div>
+
+                <span class="section-kicker">
+                    FIND RECORDS
+                </span>
+
+                <h2>
+                    Search &amp; Filter
+                </h2>
+
+                <p>
+                    Search registered records by item or location.
+                </p>
+
+            </div>
+
+        </div>
 
 
         <form
@@ -218,16 +333,28 @@
                 type="text"
                 name="q"
                 value="{{ search_query | default('') }}"
-                placeholder="Search..."
+                placeholder="Search records..."
             >
 
 
             <button
                 type="submit"
-                class="button"
+                class="button primary-button"
             >
                 Search
             </button>
+
+
+            {% if search_query %}
+
+                <a
+                    href="{{ url_for('index') }}"
+                    class="clear-search"
+                >
+                    Clear Search
+                </a>
+
+            {% endif %}
 
 
         </form>
@@ -237,7 +364,7 @@
 
     <!-- Records -->
 
-    <section class="card">
+    <section class="card records-card">
 
 
         <div class="section-heading">
@@ -245,20 +372,35 @@
 
             <div>
 
+                <span class="section-kicker">
+                    BLOCKCHAIN RECORDS
+                </span>
+
                 <h2>
                     Registered Records
                 </h2>
 
                 <p>
-                    Records retrieved from Algorand TestNet
+                    {% if search_query %}
+
+                        Showing results for
+                        <strong>"{{ search_query }}"</strong>
+
+                    {% else %}
+
+                        Records retrieved from Algorand TestNet
+
+                    {% endif %}
                 </p>
 
             </div>
 
 
-            <span class="record-count">
+            <div class="record-count">
+
                 {{ records | length }}
-            </span>
+
+            </div>
 
 
         </div>
@@ -284,71 +426,104 @@
                             <span
                                 class="badge {{ record.type }}"
                             >
+
+                                <span class="badge-dot"></span>
+
                                 {{ record.type | upper }}
+
                             </span>
 
 
                             <span class="round">
-                                Round {{ entry.confirmed_round }}
+
+                                Confirmed Round
+                                {{ entry.confirmed_round }}
+
                             </span>
 
 
                         </div>
 
 
-                        <h3>
-                            {{ record.item }}
-                        </h3>
+                        <div class="record-body">
 
 
-                        <p class="description">
-                            {{ record.description }}
-                        </p>
+                            <h3>
+                                {{ record.item }}
+                            </h3>
 
 
-                        <p>
-                            <strong>
-                                Location:
-                            </strong>
-
-                            {{ record.location }}
-                        </p>
+                            <p class="description">
+                                {{ record.description }}
+                            </p>
 
 
-                        <p>
-                            <strong>
-                                Reported:
-                            </strong>
-
-                            {{ record.reported_at }}
-                        </p>
+                            <div class="record-details">
 
 
-                        <div class="txid">
+                                <div class="detail">
+
+                                    <span class="detail-label">
+                                        LOCATION
+                                    </span>
+
+                                    <span class="detail-value">
+                                        {{ record.location }}
+                                    </span>
+
+                                </div>
 
 
-                            <strong>
-                                Transaction ID:
-                            </strong>
+                                <div class="detail">
+
+                                    <span class="detail-label">
+                                        REPORTED
+                                    </span>
+
+                                    <span class="detail-value">
+                                        {{ record.reported_at }}
+                                    </span>
+
+                                </div>
 
 
-                            <code>
-                                {{ entry.txid }}
-                            </code>
+                            </div>
 
 
-                        </div>
+                            <div class="blockchain-proof">
 
 
-                        <div class="verify-action">
+                                <div class="proof-header">
+
+                                    <span>
+                                        BLOCKCHAIN TRANSACTION
+                                    </span>
+
+                                    <span class="proof-status">
+                                        ON-CHAIN
+                                    </span>
+
+                                </div>
 
 
-                            <a
-                                href="{{ url_for('verify', txid=entry.txid) }}"
-                                class="verify-button"
-                            >
-                                Verify Blockchain Record
-                            </a>
+                                <code>
+                                    {{ entry.txid }}
+                                </code>
+
+
+                            </div>
+
+
+                            <div class="record-actions">
+
+                                <a
+                                    href="{{ url_for('verify', txid=entry.txid) }}"
+                                    class="verify-button"
+                                >
+                                    Verify Blockchain Record
+                                </a>
+
+                            </div>
 
 
                         </div>
@@ -368,8 +543,24 @@
 
             <div class="empty">
 
+                <div class="empty-icon">
+                    —
+                </div>
+
+                <h3>
+                    No records found
+                </h3>
+
                 <p>
-                    No Lost &amp; Found records found.
+                    {% if search_query %}
+
+                        No records match your search.
+
+                    {% else %}
+
+                        No Lost &amp; Found records have been registered yet.
+
+                    {% endif %}
                 </p>
 
             </div>
@@ -386,15 +577,17 @@
 
 <footer class="footer">
 
-    <div class="container">
+    <div class="container footer-content">
 
-        <p>
-            Algorand Lost &amp; Found Registry
-        </p>
+        <div>
+            <strong>
+                Algorand Lost &amp; Found Registry
+            </strong>
+        </div>
 
-        <p>
+        <div>
             TestNet demonstration project
-        </p>
+        </div>
 
     </div>
 
