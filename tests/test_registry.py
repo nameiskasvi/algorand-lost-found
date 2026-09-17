@@ -1,3 +1,4 @@
+import base64
 import json
 
 import pytest
@@ -6,6 +7,9 @@ from src.registry import (
     PREFIX,
     build_note,
     decode_registry_note,
+    filter_records_by_type,
+    search_records_by_item,
+    search_records_by_location,
     validate_item,
 )
 
@@ -111,9 +115,9 @@ def test_decode_registry_note():
         "Library",
     )
 
-    encoded = __import__(
-        "base64"
-    ).b64encode(note).decode("utf-8")
+    encoded = base64.b64encode(
+        note
+    ).decode("utf-8")
 
     payload = decode_registry_note(
         encoded
@@ -126,9 +130,7 @@ def test_decode_registry_note():
 
 
 def test_decode_invalid_note_returns_none():
-    encoded = __import__(
-        "base64"
-    ).b64encode(
+    encoded = base64.b64encode(
         b'{"app":"OTHER","item":"Test"}'
     ).decode("utf-8")
 
@@ -136,3 +138,166 @@ def test_decode_invalid_note_returns_none():
         decode_registry_note(encoded)
         is None
     )
+
+
+def sample_records():
+    """Return sample records for testing filtering/search."""
+
+    return [
+        {
+            "txid": "TXID-1",
+            "confirmed_round": 100,
+            "record": {
+                "v": 1,
+                "app": PREFIX,
+                "type": "lost",
+                "item": "Black Backpack",
+                "description": "Backpack with notebooks",
+                "location": "University Library",
+            },
+        },
+        {
+            "txid": "TXID-2",
+            "confirmed_round": 101,
+            "record": {
+                "v": 1,
+                "app": PREFIX,
+                "type": "found",
+                "item": "Mobile Phone",
+                "description": "Black smartphone",
+                "location": "University Library",
+            },
+        },
+        {
+            "txid": "TXID-3",
+            "confirmed_round": 102,
+            "record": {
+                "v": 1,
+                "app": PREFIX,
+                "type": "lost",
+                "item": "Blue Water Bottle",
+                "description": "Steel bottle",
+                "location": "Computer Lab",
+            },
+        },
+    ]
+
+
+def test_filter_records_by_type():
+    records = sample_records()
+
+    lost_records = filter_records_by_type(
+        records,
+        "lost",
+    )
+
+    assert len(lost_records) == 2
+    assert (
+        lost_records[0]["record"]["item"]
+        == "Black Backpack"
+    )
+    assert (
+        lost_records[1]["record"]["item"]
+        == "Blue Water Bottle"
+    )
+
+
+def test_filter_found_records_by_type():
+    records = sample_records()
+
+    found_records = filter_records_by_type(
+        records,
+        "found",
+    )
+
+    assert len(found_records) == 1
+    assert (
+        found_records[0]["record"]["item"]
+        == "Mobile Phone"
+    )
+
+
+def test_search_records_by_item():
+    records = sample_records()
+
+    results = search_records_by_item(
+        records,
+        "backpack",
+    )
+
+    assert len(results) == 1
+    assert (
+        results[0]["record"]["item"]
+        == "Black Backpack"
+    )
+
+
+def test_search_records_by_item_is_case_insensitive():
+    records = sample_records()
+
+    results = search_records_by_item(
+        records,
+        "MOBILE",
+    )
+
+    assert len(results) == 1
+    assert (
+        results[0]["record"]["item"]
+        == "Mobile Phone"
+    )
+
+
+def test_search_records_by_location():
+    records = sample_records()
+
+    results = search_records_by_location(
+        records,
+        "library",
+    )
+
+    assert len(results) == 2
+
+
+def test_search_records_by_location_is_case_insensitive():
+    records = sample_records()
+
+    results = search_records_by_location(
+        records,
+        "COMPUTER LAB",
+    )
+
+    assert len(results) == 1
+    assert (
+        results[0]["record"]["item"]
+        == "Blue Water Bottle"
+    )
+
+
+def test_empty_item_search_is_rejected():
+    records = sample_records()
+
+    with pytest.raises(ValueError):
+        search_records_by_item(
+            records,
+            "",
+        )
+
+
+def test_empty_location_search_is_rejected():
+    records = sample_records()
+
+    with pytest.raises(ValueError):
+        search_records_by_location(
+            records,
+            "",
+        )
+
+
+def test_invalid_filter_type_is_rejected():
+    records = sample_records()
+
+    with pytest.raises(ValueError):
+        filter_records_by_type(
+            records,
+            "unknown",
+        )

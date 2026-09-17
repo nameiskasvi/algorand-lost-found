@@ -335,12 +335,87 @@ def list_records(limit: int = 50):
     return records
 
 
+def filter_records_by_type(
+    records,
+    item_type: str,
+):
+    """Filter registry records by lost/found type."""
+
+    if item_type not in ALLOWED_ITEM_TYPES:
+        raise ValueError(
+            "Invalid item type. Use 'lost' or 'found'."
+        )
+
+    return [
+        entry
+        for entry in records
+        if entry.get(
+            "record",
+            {}
+        ).get("type") == item_type
+    ]
+
+
+def search_records_by_item(
+    records,
+    search_term: str,
+):
+    """Search records by item name."""
+
+    if not search_term or not search_term.strip():
+        raise ValueError(
+            "Search term cannot be empty."
+        )
+
+    search_term = search_term.strip().lower()
+
+    return [
+        entry
+        for entry in records
+        if search_term
+        in entry.get(
+            "record",
+            {}
+        ).get(
+            "item",
+            ""
+        ).lower()
+    ]
+
+
+def search_records_by_location(
+    records,
+    search_term: str,
+):
+    """Search records by location."""
+
+    if not search_term or not search_term.strip():
+        raise ValueError(
+            "Search term cannot be empty."
+        )
+
+    search_term = search_term.strip().lower()
+
+    return [
+        entry
+        for entry in records
+        if search_term
+        in entry.get(
+            "record",
+            {}
+        ).get(
+            "location",
+            ""
+        ).lower()
+    ]
+
+
 def print_records(records):
     """Display registry records in a readable format."""
 
     if not records:
         print(
-            "\nNo Lost & Found records found."
+            "\nNo matching Lost & Found records found."
         )
         return
 
@@ -442,6 +517,135 @@ def register_from_menu(item_type: str):
         )
 
 
+def run_search_menu():
+    """Run the interactive search and filter menu."""
+
+    try:
+        records = list_records()
+    except RuntimeError as exc:
+        print(
+            f"\nConfiguration error: {exc}"
+        )
+        return
+    except Exception as exc:
+        print(
+            f"\nCould not retrieve records: {exc}"
+        )
+        return
+
+    while True:
+        print(
+            "\n"
+            "========================================\n"
+            "       SEARCH LOST & FOUND\n"
+            "========================================\n"
+        )
+
+        print(
+            "1. All Records"
+        )
+
+        print(
+            "2. Lost Items"
+        )
+
+        print(
+            "3. Found Items"
+        )
+
+        print(
+            "4. Search by Item"
+        )
+
+        print(
+            "5. Search by Location"
+        )
+
+        print(
+            "6. Back"
+        )
+
+        print()
+
+        choice = input(
+            "Enter your choice: "
+        ).strip()
+
+        if choice == "1":
+            print_records(
+                records
+            )
+
+        elif choice == "2":
+            filtered = filter_records_by_type(
+                records,
+                "lost",
+            )
+
+            print_records(
+                filtered
+            )
+
+        elif choice == "3":
+            filtered = filter_records_by_type(
+                records,
+                "found",
+            )
+
+            print_records(
+                filtered
+            )
+
+        elif choice == "4":
+            search_term = input(
+                "\nEnter item name to search: "
+            )
+
+            try:
+                filtered = search_records_by_item(
+                    records,
+                    search_term,
+                )
+
+                print_records(
+                    filtered
+                )
+
+            except ValueError as exc:
+                print(
+                    f"\nSearch error: {exc}"
+                )
+
+        elif choice == "5":
+            search_term = input(
+                "\nEnter location to search: "
+            )
+
+            try:
+                filtered = search_records_by_location(
+                    records,
+                    search_term,
+                )
+
+                print_records(
+                    filtered
+                )
+
+            except ValueError as exc:
+                print(
+                    f"\nSearch error: {exc}"
+                )
+
+        elif choice == "6":
+            break
+
+        else:
+            print(
+                "\nInvalid choice. "
+                "Please select 1, 2, 3, 4, 5, or 6."
+            )
+
+
 def run_menu():
     """Run the interactive Lost & Found registry menu."""
 
@@ -470,7 +674,11 @@ def run_menu():
         )
 
         print(
-            "5. Exit"
+            "5. Search & Filter Records"
+        )
+
+        print(
+            "6. Exit"
         )
 
         print()
@@ -525,6 +733,9 @@ def run_menu():
             )
 
         elif choice == "5":
+            run_search_menu()
+
+        elif choice == "6":
             print(
                 "\nThank you for using "
                 "Algorand Lost & Found Registry."
@@ -535,7 +746,7 @@ def run_menu():
         else:
             print(
                 "\nInvalid choice. "
-                "Please select 1, 2, 3, 4, or 5."
+                "Please select 1, 2, 3, 4, 5, or 6."
             )
 
 
