@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>
+        Blockchain Verification
+    </title>
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='style.css') }}"
+    >
+
+</head>
+
+
+<body>
+
+
+<header class="header">
+
+    <div class="container">
+
+        <h1>
+            Blockchain Verification
+        </h1>
+
+        <p>
+            Algorand Lost &amp; Found Registry
+        </p>
+
+    </div>
+
+</header>
+
+
+<main class="container">
+
+
+    <section class="card">
+
+
+        <h2>
+            Transaction Verification
+        </h2>
+
+
+        {% if result.verified %}
+
+
+            <div class="message success">
+
+                ✓ Blockchain Record Verified
+
+            </div>
+
+
+            <p>
+                The transaction contains a valid
+                Lost &amp; Found registry record.
+            </p>
+
+
+            <div class="record">
+
+
+                <p>
+                    <strong>
+                        Transaction ID:
+                    </strong>
+                </p>
+
+                <code>
+                    {{ txid }}
+                </code>
+
+
+                <p>
+                    <strong>
+                        Confirmed Round:
+                    </strong>
+
+                    {{ result.confirmed_round }}
+                </p>
+
+
+                <p>
+                    <strong>
+                        Record Type:
+                    </strong>
+
+                    {{ result.record.type | upper }}
+                </p>
+
+
+                <p>
+                    <strong>
+                        Item:
+                    </strong>
+
+                    {{ result.record.item }}
+                </p>
+
+
+                <p>
+                    <strong>
+                        Description:
+                    </strong>
+
+                    {{ result.record.description }}
+                </p>
+
+
+                <p>
+                    <strong>
+                        Location:
+                    </strong>
+
+                    {{ result.record.location }}
+                </p>
+
+
+                <p>
+                    <strong>
+                        Reported:
+                    </strong>
+
+                    {{ result.record.reported_at }}
+                </p>
+
+
+                <p>
+                    <strong>
+                        Registry Identifier:
+                    </strong>
+
+                    {{ result.record.app }}
+                </p>
+
+
+            </div>
+
+
+        {% else %}
+
+
+            <div class="message error">
+
+                ✗ Blockchain Record Could Not Be Verified
+
+            </div>
+
+
+            <p>
+                {{ result.reason }}
+            </p>
+
+
+            {% if txid %}
+
+                <p>
+                    <strong>
+                        Transaction ID:
+                    </strong>
+                </p>
+
+                <code>
+                    {{ txid }}
+                </code>
+
+            {% endif %}
+
+
+        {% endif %}
+
+
+        <div class="verify-action">
+
+            <a
+                href="{{ url_for('index') }}"
+                class="verify-button"
+            >
+                ← Back to Registry
+            </a>
+
+        </div>
+
+
+    </section>
+
+
+</main>
+
+
+<footer class="footer">
+
+    <div class="container">
+
+        <p>
+            Algorand Lost &amp; Found Registry
+        </p>
+
+        <p>
+            TestNet demonstration project
+        </p>
+
+    </div>
+
+</footer>
+
+
+</body>
+</html>

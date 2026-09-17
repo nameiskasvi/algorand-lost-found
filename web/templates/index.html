@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>
+        Algorand Lost &amp; Found Registry
+    </title>
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='style.css') }}"
+    >
+
+</head>
+
+
+<body>
+
+
+<header class="header">
+
+    <div class="container">
+
+        <h1>
+            Algorand Lost &amp; Found Registry
+        </h1>
+
+        <p>
+            Blockchain-backed Lost &amp; Found record management
+        </p>
+
+    </div>
+
+</header>
+
+
+<main class="container">
+
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+
+        {% if messages %}
+
+            <section class="messages">
+
+                {% for category, message in messages %}
+
+                    <div class="message {{ category }}">
+                        {{ message }}
+                    </div>
+
+                {% endfor %}
+
+            </section>
+
+        {% endif %}
+
+    {% endwith %}
+
+
+    <!-- Registration -->
+
+    <section class="card">
+
+        <h2>
+            Register an Item
+        </h2>
+
+
+        <form
+            action="{{ url_for('register') }}"
+            method="POST"
+        >
+
+
+            <div class="form-group">
+
+                <label for="item_type">
+                    Record Type
+                </label>
+
+                <select
+                    id="item_type"
+                    name="item_type"
+                    required
+                >
+
+                    <option value="lost">
+                        Lost Item
+                    </option>
+
+                    <option value="found">
+                        Found Item
+                    </option>
+
+                </select>
+
+            </div>
+
+
+            <div class="form-group">
+
+                <label for="item">
+                    Item Name
+                </label>
+
+                <input
+                    type="text"
+                    id="item"
+                    name="item"
+                    maxlength="100"
+                    placeholder="e.g. Black Backpack"
+                    required
+                >
+
+            </div>
+
+
+            <div class="form-group">
+
+                <label for="description">
+                    Description
+                </label>
+
+                <textarea
+                    id="description"
+                    name="description"
+                    maxlength="500"
+                    placeholder="Describe the item"
+                    required
+                ></textarea>
+
+            </div>
+
+
+            <div class="form-group">
+
+                <label for="location">
+                    Location
+                </label>
+
+                <input
+                    type="text"
+                    id="location"
+                    name="location"
+                    maxlength="200"
+                    placeholder="e.g. University Library"
+                    required
+                >
+
+            </div>
+
+
+            <button
+                type="submit"
+                class="button"
+            >
+                Register Item
+            </button>
+
+
+        </form>
+
+    </section>
+
+
+    <!-- Search -->
+
+    <section class="card">
+
+        <h2>
+            Search Records
+        </h2>
+
+
+        <form
+            action="{{ url_for('search') }}"
+            method="GET"
+            class="search-form"
+        >
+
+
+            <select
+                name="type"
+                aria-label="Search type"
+            >
+
+                <option
+                    value="item"
+                    {% if search_type == "item" %}
+                        selected
+                    {% endif %}
+                >
+                    Item
+                </option>
+
+
+                <option
+                    value="location"
+                    {% if search_type == "location" %}
+                        selected
+                    {% endif %}
+                >
+                    Location
+                </option>
+
+            </select>
+
+
+            <input
+                type="text"
+                name="q"
+                value="{{ search_query | default('') }}"
+                placeholder="Search..."
+            >
+
+
+            <button
+                type="submit"
+                class="button"
+            >
+                Search
+            </button>
+
+
+        </form>
+
+    </section>
+
+
+    <!-- Records -->
+
+    <section class="card">
+
+
+        <div class="section-heading">
+
+
+            <div>
+
+                <h2>
+                    Registered Records
+                </h2>
+
+                <p>
+                    Records retrieved from Algorand TestNet
+                </p>
+
+            </div>
+
+
+            <span class="record-count">
+                {{ records | length }}
+            </span>
+
+
+        </div>
+
+
+        {% if records %}
+
+
+            <div class="records">
+
+
+                {% for entry in records %}
+
+                    {% set record = entry.record %}
+
+
+                    <article class="record">
+
+
+                        <div class="record-header">
+
+
+                            <span
+                                class="badge {{ record.type }}"
+                            >
+                                {{ record.type | upper }}
+                            </span>
+
+
+                            <span class="round">
+                                Round {{ entry.confirmed_round }}
+                            </span>
+
+
+                        </div>
+
+
+                        <h3>
+                            {{ record.item }}
+                        </h3>
+
+
+                        <p class="description">
+                            {{ record.description }}
+                        </p>
+
+
+                        <p>
+                            <strong>
+                                Location:
+                            </strong>
+
+                            {{ record.location }}
+                        </p>
+
+
+                        <p>
+                            <strong>
+                                Reported:
+                            </strong>
+
+                            {{ record.reported_at }}
+                        </p>
+
+
+                        <div class="txid">
+
+
+                            <strong>
+                                Transaction ID:
+                            </strong>
+
+
+                            <code>
+                                {{ entry.txid }}
+                            </code>
+
+
+                        </div>
+
+
+                        <div class="verify-action">
+
+
+                            <a
+                                href="{{ url_for('verify', txid=entry.txid) }}"
+                                class="verify-button"
+                            >
+                                Verify Blockchain Record
+                            </a>
+
+
+                        </div>
+
+
+                    </article>
+
+
+                {% endfor %}
+
+
+            </div>
+
+
+        {% else %}
+
+
+            <div class="empty">
+
+                <p>
+                    No Lost &amp; Found records found.
+                </p>
+
+            </div>
+
+
+        {% endif %}
+
+
+    </section>
+
+
+</main>
+
+
+<footer class="footer">
+
+    <div class="container">
+
+        <p>
+            Algorand Lost &amp; Found Registry
+        </p>
+
+        <p>
+            TestNet demonstration project
+        </p>
+
+    </div>
+
+</footer>
+
+
+</body>
+</html>
