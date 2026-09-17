@@ -5,6 +5,7 @@ import pytest
 from src.registry import (
     PREFIX,
     build_note,
+    decode_registry_note,
     validate_item,
 )
 
@@ -100,3 +101,38 @@ def test_whitespace_is_removed():
     assert payload["item"] == "Black Backpack"
     assert payload["description"] == "Black backpack"
     assert payload["location"] == "University Library"
+
+
+def test_decode_registry_note():
+    note = build_note(
+        "found",
+        "Mobile Phone",
+        "Black smartphone",
+        "Library",
+    )
+
+    encoded = __import__(
+        "base64"
+    ).b64encode(note).decode("utf-8")
+
+    payload = decode_registry_note(
+        encoded
+    )
+
+    assert payload is not None
+    assert payload["app"] == PREFIX
+    assert payload["type"] == "found"
+    assert payload["item"] == "Mobile Phone"
+
+
+def test_decode_invalid_note_returns_none():
+    encoded = __import__(
+        "base64"
+    ).b64encode(
+        b'{"app":"OTHER","item":"Test"}'
+    ).decode("utf-8")
+
+    assert (
+        decode_registry_note(encoded)
+        is None
+    )

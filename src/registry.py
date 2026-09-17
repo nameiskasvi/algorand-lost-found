@@ -6,7 +6,11 @@ from datetime import datetime, timezone
 from algosdk import account, mnemonic
 from algosdk.transaction import PaymentTxn, wait_for_confirmation
 
-from .config import ACCOUNT_MNEMONIC, get_algod_client
+from .config import (
+    ACCOUNT_MNEMONIC,
+    get_algod_client,
+    get_indexer_client,
+)
 
 
 PREFIX = "LFR1"
@@ -48,7 +52,8 @@ def validate_item(
 
     if len(item.strip()) > MAX_ITEM_LENGTH:
         raise ValueError(
-            f"Item name cannot exceed {MAX_ITEM_LENGTH} characters."
+            f"Item name cannot exceed "
+            f"{MAX_ITEM_LENGTH} characters."
         )
 
     if len(description.strip()) > MAX_DESCRIPTION_LENGTH:
@@ -59,7 +64,8 @@ def validate_item(
 
     if len(location.strip()) > MAX_LOCATION_LENGTH:
         raise ValueError(
-            f"Location cannot exceed {MAX_LOCATION_LENGTH} characters."
+            f"Location cannot exceed "
+            f"{MAX_LOCATION_LENGTH} characters."
         )
 
 
@@ -94,6 +100,46 @@ def build_note(
     ).encode("utf-8")
 
 
+def decode_registry_note(note_b64: str):
+    """Decode a base64-encoded registry note."""
+
+    try:
+        note = json.loads(
+            base64.b64decode(
+                note_b64
+            ).decode("utf-8")
+        )
+    except (
+        ValueError,
+        UnicodeDecodeError,
+        json.JSONDecodeError,
+    ):
+        return None
+
+    if note.get("app") != PREFIX:
+        return None
+
+    return note
+
+
+def get_account_address() -> str:
+    """Return the blockchain address derived from the configured mnemonic."""
+
+    if not ACCOUNT_MNEMONIC:
+        raise RuntimeError(
+            "ACCOUNT_MNEMONIC is not configured. "
+            "Copy .env.example to .env and add a TestNet mnemonic."
+        )
+
+    private_key = mnemonic.to_private_key(
+        ACCOUNT_MNEMONIC
+    )
+
+    return account.address_from_private_key(
+        private_key
+    )
+
+
 def register_item(
     item_type: str,
     item: str,
@@ -109,19 +155,7 @@ def register_item(
         location,
     )
 
-    if not ACCOUNT_MNEMONIC:
-        raise RuntimeError(
-            "ACCOUNT_MNEMONIC is not configured. "
-            "Copy .env.example to .env and add a TestNet mnemonic."
-        )
-
-    private_key = mnemonic.to_private_key(
-        ACCOUNT_MNEMONIC
-    )
-
-    sender = account.address_from_private_key(
-        private_key
-    )
+    sender = get_account_address()
 
     client = get_algod_client()
 
@@ -146,7 +180,11 @@ def register_item(
 
     # Compatible with the installed
     # py-algorand-sdk version.
-    signed = txn.sign(private_key)
+    signed = txn.sign(
+        mnemonic.to_private_key(
+            ACCOUNT_MNEMONIC
+        )
+    )
 
     txid = client.send_transaction(
         signed
@@ -179,7 +217,9 @@ def verify_transaction(txid: str):
     except Exception as exc:
         return {
             "verified": False,
-            "reason": f"Could not retrieve transaction: {exc}",
+            "reason": (
+                f"Could not retrieve transaction: {exc}"
+            ),
         }
 
     confirmed_round = info.get(
@@ -215,30 +255,88 @@ def verify_transaction(txid: str):
             ),
         }
 
-    try:
-        note = json.loads(
-            base64.b64decode(
-                note_b64
-            ).decode("utf-8")
-        )
-    except (
-        ValueError,
-        UnicodeDecodeError,
-        json.JSONDecodeError,
-    ):
+    note = decode_registry_note(
+        note_b64
+    )
+
+    if note is None:
         return {
             "verified": False,
             "reason": (
-                "Registry note could not "
-                "be decoded as JSON."
+                "Transaction does not contain "
+                "a valid Lost & Found registry note."
             ),
         }
 
     return {
-        "verified": note.get("app") == PREFIX,
+        "verified": True,
         "confirmed_round": confirmed_round,
         "record": note,
     }
+
+
+def list_records(limit: int = 50):
+    """Return Lost & Found records registered by this account."""
+
+    if limit < 1 or limit > 1000:
+        raise ValueError(
+            "Limit must be between 1 and 1000."
+        )
+
+    sender = get_account_address()
+
+    client = get_indexer_client()
+
+    # We intentionally do not use note_prefix here.
+    #
+    # The registry note is JSON and starts with "{",
+    # while "LFR1" appears inside the JSON as the
+    # value of the "app" field.
+    #
+    # Therefore, we retrieve payment transactions
+    # for this account and filter valid registry
+    # records after decoding their notes.
+    response = client.search_transactions_by_address(
+        address=sender,
+        limit=limit,
+        txn_type="pay",
+    )
+
+    transactions = response.get(
+        "transactions",
+        [],
+    )
+
+    records = []
+
+    for transaction in transactions:
+        note_b64 = transaction.get(
+            "note"
+        )
+
+        if not note_b64:
+            continue
+
+        record = decode_registry_note(
+            note_b64
+        )
+
+        if record is None:
+            continue
+
+        records.append(
+            {
+                "txid": transaction.get(
+                    "id"
+                ),
+                "confirmed_round": transaction.get(
+                    "confirmed-round"
+                ),
+                "record": record,
+            }
+        )
+
+    return records
 
 
 def main():
@@ -287,6 +385,18 @@ def main():
         required=True,
     )
 
+    list_parser = sub.add_parser(
+        "list",
+        help="List registered Lost & Found records",
+    )
+
+    list_parser.add_argument(
+        "--limit",
+        type=int,
+        default=50,
+        help="Maximum number of records to display",
+    )
+
     args = parser.parse_args()
 
     try:
@@ -315,11 +425,38 @@ def main():
                 )
             )
 
+        elif args.command == "list":
+            records = list_records(
+                args.limit
+            )
+
+            if not records:
+                print(
+                    "No Lost & Found records found."
+                )
+                return
+
+            print(
+                f"Found {len(records)} "
+                f"Lost & Found record(s):\n"
+            )
+
+            print(
+                json.dumps(
+                    records,
+                    indent=2,
+                )
+            )
+
     except ValueError as exc:
-        parser.error(str(exc))
+        parser.error(
+            str(exc)
+        )
 
     except RuntimeError as exc:
-        parser.error(str(exc))
+        parser.error(
+            str(exc)
+        )
 
 
 if __name__ == "__main__":
